@@ -1,46 +1,67 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <meta charset="utf-8">
-    <title>Login Page</title>
+    <title>JWT Authentication Example</title>
 </head>
 <body>
-<h1>Login</h1>
-<form id="loginForm" onsubmit="login(event)">
-    <label for="username">Username:</label>
-    <input type="text" id="username" name="username" value="1"><br><br>
-    <label for="password">Password:</label>
-    <input type="password" id="password" name="password" value="1"><br><br>
-    <input type="submit" value="Login">
-</form>
+<h1>JWT Authentication Example</h1>
+<div id="login">
+    <h2>Login</h2>
+    <label>Username:</label>
+    <input type="text" id="username" /><br /><br />
+    <label>Password:</label>
+    <input type="password" id="password" /><br /><br />
+    <button onclick="login()">Login</button>
+</div>
+<div id="content" style="display:none;">
+    <h2>Welcome</h2>
+    <p>You are now logged in.</p>
 
+    <p id="p1"></p>
+    <button onclick="logout()">Logout</button>
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
 <script>
-    function login(event) {
-        event.preventDefault();
-        const form = document.getElementById("loginForm");
-        const username = form.elements.username.value;
-        const password = form.elements.password.value;
-
-        fetch('/login', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
+    function login() {
+        var username = $('#username').val();
+        var password = $('#password').val();
+        $.ajax({
+            type: 'POST',
+            url: '/login',
+            contentType: "application/json",
+            data: JSON.stringify({username, password}),
+            success: function(data) {
+                console.log(JSON.stringify(data.tokens),)
+                localStorage.setItem('tokens', JSON.stringify(data.tokens));
+                $('#login').hide();
+                $('#content').show();
             },
-            body: JSON.stringify({ username, password })
-        })
-            .then(response => response.json())
-            .then(data => {
-                console.log(data)
-
-                localStorage.setItem('token', data);
-
-                window.location.href = '/home';
-            })
-            .catch(error => {
-                console.error('Login failed:', error);
-                alert('Login failed. Please try again.');
-            });
+        });
     }
+
+    function logout() {
+        localStorage.removeItem('tokens');
+        $('#content').hide();
+        $('#login').show();
+    }
+
+    $(document).ready(function() {
+        var token = localStorage.getItem('tokens');
+        console.log(token)
+        if (token) {
+            $.ajax({
+                type: 'GET',
+                url: '/home',
+                headers: {'tokens':  token},
+                success: function(data) {
+                    $('#login').hide();
+                    $('#content').show();
+                    console.log(data)
+
+                },
+            });
+        }
+    });
 </script>
 </body>
 </html>
