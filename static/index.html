@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Login Page</title>
+</head>
+<body>
+<h1>Login</h1>
+<form id="loginForm" onsubmit="login(event)">
+    <label for="username">Username:</label>
+    <input type="text" id="username" name="username" value="1"><br><br>
+    <label for="password">Password:</label>
+    <input type="password" id="password" name="password" value="1"><br><br>
+    <input type="submit" value="Login">
+</form>
+
+<script>
+    function login(event) {
+        event.preventDefault();
+        const form = document.getElementById("loginForm");
+        const username = form.elements.username.value;
+        const password = form.elements.password.value;
+
+        fetch('/login', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ username, password })
+        })
+            .then(response => response.json())
+            .then(data => {
+                console.log(data)
+
+                localStorage.setItem('token', data);
+
+                window.location.href = '/home';
+            })
+            .catch(error => {
+                console.error('Login failed:', error);
+                alert('Login failed. Please try again.');
+            });
+    }
+</script>
+</body>
+</html>
