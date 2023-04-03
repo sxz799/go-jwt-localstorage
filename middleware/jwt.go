@@ -1,7 +1,6 @@
 package middleware
 
 import (
-	"encoding/json"
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v4"
 	"log"
@@ -15,77 +14,51 @@ type Claims struct {
 	jwt.RegisteredClaims
 }
 
-type Tokens struct {
-	AccessToken  string `json:"access_token"`
-	RefreshToken string `json:"refresh_token"`
-}
-
-func GenToken(u string) (tokens Tokens, err error) {
+func GenToken(u string) (tokenStr string, err error) {
 	// 创建jwt accessClaims 设置过期时间15s
-	accessClaims := &Claims{
+	claims := &Claims{
 		Username: u,
 		RegisteredClaims: jwt.RegisteredClaims{
-			ExpiresAt: jwt.NewNumericDate(time.Now().Add(15 * time.Second)),
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(20 * time.Second)),
 		},
 	}
-	refreshClaims := &Claims{
-		RegisteredClaims: jwt.RegisteredClaims{
-			ExpiresAt: jwt.NewNumericDate(time.Now().Add(30 * time.Second)),
-		},
-	}
-	accessToken := jwt.NewWithClaims(jwt.SigningMethodHS256, accessClaims)
-	refreshToken := jwt.NewWithClaims(jwt.SigningMethodHS256, refreshClaims)
-	tokens.AccessToken, err = accessToken.SignedString(JwtKey)
-	tokens.RefreshToken, err = refreshToken.SignedString(JwtKey)
-	if err != nil {
-		// 创建Token失败
-		return tokens, err
-	}
-	return tokens, nil
+
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	tokenStr, err = token.SignedString(JwtKey)
+	return
 }
 
 func JWTAuth() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		var tokens Tokens
-		tokensStr := c.GetHeader("tokens")
-		log.Println(tokensStr)
-		err := json.Unmarshal([]byte(tokensStr), &tokens)
-		if err != nil {
+		tokensStr := c.GetHeader("token")
+		log.Println("获取到的token", tokensStr)
+
+		if tokensStr == "" {
 			// 获取access-token失败
+			c.String(200, "未登录状态！")
 			c.Abort()
 			return
 		}
 
-		accessClaims := &Claims{}
-		refreshClaims := &Claims{}
-		accessToken, err := jwt.ParseWithClaims(tokens.AccessToken, accessClaims, func(token *jwt.Token) (interface{}, error) {
+		claims := &Claims{}
+		token, err := jwt.ParseWithClaims(tokensStr, claims, func(token *jwt.Token) (interface{}, error) {
 			return JwtKey, nil
 		})
-
-		if err != nil || !accessToken.Valid {
-			refreshToken, err2 := jwt.ParseWithClaims(tokens.RefreshToken, refreshClaims, func(token *jwt.Token) (interface{}, error) {
-				return JwtKey, nil
-			})
-			if err2 != nil || !refreshToken.Valid {
-				c.String(200, "refreshToken不合法或已过期,需要重新登录")
-				c.Abort()
-				return
+		log.Println(token.Valid)
+		if err == nil && token.Valid {
+			if claims.ExpiresAt.Unix()-time.Now().Unix() < 15 {
+				log.Println("生成了新Token")
+				str, _ := GenToken(claims.Username)
+				c.Header("new-token", str)
 			}
-			if refreshToken.Valid {
-				tokens, err = GenToken(accessClaims.Username)
-				if err != nil {
-					c.String(200, "更新token失败！")
-					c.Abort()
-					return
-				}
-			}
+			c.Set("claims", claims)
+			c.Next()
+		} else {
+			c.String(200, "token已过期，请重新登录！")
+			c.Abort()
+			return
 		}
-		log.Println("accessToken过期时间:", accessClaims.ExpiresAt)
-		log.Println("refreshToken过期时间:", refreshClaims.ExpiresAt)
-		c.Set("accessClaims", accessClaims)
-		marshal, _ := json.Marshal(tokens)
-		c.Header("tokens", string(marshal))
-		c.Next()
+
 	}
 
 }

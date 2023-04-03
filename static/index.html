@@ -31,8 +31,8 @@
             contentType: "application/json",
             data: JSON.stringify({username, password}),
             success: function(data) {
-                console.log(JSON.stringify(data.tokens),)
-                localStorage.setItem('tokens', JSON.stringify(data.tokens));
+                console.log(JSON.stringify(data.token),)
+                localStorage.setItem('token', data.token);
                 $('#login').hide();
                 $('#content').show();
             },
@@ -40,23 +40,28 @@
     }
 
     function logout() {
-        localStorage.removeItem('tokens');
+        localStorage.removeItem('token');
         $('#content').hide();
         $('#login').show();
     }
 
     $(document).ready(function() {
-        var token = localStorage.getItem('tokens');
+        var token = localStorage.getItem('token');
         console.log(token)
         if (token) {
             $.ajax({
                 type: 'GET',
                 url: '/home',
-                headers: {'tokens':  token},
-                success: function(data) {
-                    $('#login').hide();
-                    $('#content').show();
-                    console.log(data)
+                headers: {'token':  token},
+                success: function(data, textStatus, jqXHR) {
+                    if(data.success){
+                        $('#login').hide();
+                        $('#content').show();
+                        var new_token = jqXHR.getResponseHeader('new-token');
+                        if(new_token){
+                            localStorage.setItem('token', new_token);
+                        }
+                    }
 
                 },
             });

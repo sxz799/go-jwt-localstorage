@@ -20,14 +20,14 @@ func login(c *gin.Context) {
 		c.String(200, "用户名或密码有误！")
 		return
 	}
-	tokens, err := middleware.GenToken(u.Username)
+	token, err := middleware.GenToken(u.Username)
 	if err != nil {
 		log.Println(err)
 		c.String(200, "token生成失败")
 	} else {
 		c.JSON(200, gin.H{
-			"tokens": tokens,
-			"user":   u.Username,
+			"token": token,
+			"user":  u.Username,
 		})
 	}
 
@@ -40,7 +40,8 @@ func logout(c *gin.Context) {
 func home(c *gin.Context) {
 
 	c.JSON(200, gin.H{
-		"tUser": '1',
+		"success": true,
+		"tUser":   '1',
 	})
 }
 
